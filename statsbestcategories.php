@@ -184,6 +184,7 @@ class StatsBestCategories extends ModuleGrid
 				FROM `'._DB_PREFIX_.'product` pr
 				LEFT OUTER JOIN `'._DB_PREFIX_.'order_detail` cp ON pr.`id_product` = cp.`product_id`
 				LEFT JOIN `'._DB_PREFIX_.'orders` o ON o.`id_order` = cp.`id_order`
+				'.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o').'
 				WHERE o.valid = 1
 				AND o.invoice_date BETWEEN '.$date_between.'
 				GROUP BY pr.`id_product`
