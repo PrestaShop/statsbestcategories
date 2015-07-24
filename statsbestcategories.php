@@ -72,6 +72,12 @@ class StatsBestCategories extends ModuleGrid
 				'align' => 'right'
 			),
 			array(
+				'id' => 'totalWholeSalePriceSold',
+				'header' => $this->l('Total Margin'),
+				'dataIndex' => 'totalWholeSalePriceSold',
+				'align' => 'center'
+			),
+			array(
 				'id' => 'totalPageViewed',
 				'header' => $this->l('Total Viewed'),
 				'dataIndex' => 'totalPageViewed',
@@ -122,6 +128,12 @@ class StatsBestCategories extends ModuleGrid
 		$date_between = $this->getDate();
 		$id_lang = $this->getLang();
 
+		//If column 'order_detail.original_wholesale_price' does not exist, create it
+		Db::getInstance(_PS_USE_SQL_SLAVE_)->query('SHOW COLUMNS FROM `'._DB_PREFIX_.'order_detail` LIKE "original_wholesale_price"');
+		if (Db::getInstance()->NumRows() == 0) {
+			Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.'order_detail` ADD `original_wholesale_price` DECIMAL( 20, 6 ) NOT NULL DEFAULT  "0.000000"');
+		}
+
 		// If a shop is selected, get all children categories for the shop
 		$categories = array();
 		if (Shop::getContext() != Shop::CONTEXT_ALL)
@@ -154,45 +166,99 @@ class StatsBestCategories extends ModuleGrid
 		}
 
 		// Get best categories
-		$this->query = '
-		SELECT SQL_CALC_FOUND_ROWS ca.`id_category`, CONCAT(parent.name, \' > \', calang.`name`) as name,
-			IFNULL(SUM(t.`totalQuantitySold`), 0) AS totalQuantitySold,
-			ROUND(IFNULL(SUM(t.`totalPriceSold`), 0), 2) AS totalPriceSold,
-			(
-				SELECT IFNULL(SUM(pv.`counter`), 0)
-				FROM `'._DB_PREFIX_.'page` p
-				LEFT JOIN `'._DB_PREFIX_.'page_viewed` pv ON p.`id_page` = pv.`id_page`
-				LEFT JOIN `'._DB_PREFIX_.'date_range` dr ON pv.`id_date_range` = dr.`id_date_range`
-				LEFT JOIN `'._DB_PREFIX_.'product` pr ON CAST(p.`id_object` AS UNSIGNED INTEGER) = pr.`id_product`
-				LEFT JOIN `'._DB_PREFIX_.'category_product` capr2 ON capr2.`id_product` = pr.`id_product`
-				WHERE capr.`id_category` = capr2.`id_category`
-				AND p.`id_page_type` = 1
-				AND dr.`time_start` BETWEEN '.$date_between.'
-				AND dr.`time_end` BETWEEN '.$date_between.'
-			) AS totalPageViewed
-		FROM `'._DB_PREFIX_.'category` ca
-		LEFT JOIN `'._DB_PREFIX_.'category_lang` calang ON (ca.`id_category` = calang.`id_category` AND calang.`id_lang` = '.(int)$id_lang.Shop::addSqlRestrictionOnLang('calang').')
-		LEFT JOIN `'._DB_PREFIX_.'category_lang` parent ON (ca.`id_parent` = parent.`id_category` AND parent.`id_lang` = '.(int)$id_lang.Shop::addSqlRestrictionOnLang('parent').')
-		LEFT JOIN `'._DB_PREFIX_.'category_product` capr ON ca.`id_category` = capr.`id_category`
-		LEFT JOIN (
-			SELECT pr.`id_product`, t.`totalQuantitySold`, t.`totalPriceSold`
-			FROM `'._DB_PREFIX_.'product` pr
+		if (version_compare(_PS_VERSION_, '1.6.1.1', '>=')) {
+			$this->query = '
+				SELECT SQL_CALC_FOUND_ROWS ca.`id_category`, CONCAT(parent.name, \' > \', calang.`name`) as name,
+				IFNULL(SUM(t.`totalQuantitySold`), 0) AS totalQuantitySold,
+				ROUND(IFNULL(SUM(t.`totalPriceSold`), 0), 2) AS totalPriceSold,
+				ROUND(IFNULL(SUM(t.`totalWholeSalePriceSold`), 0), 2) AS totalWholeSalePriceSold,
+				(
+					SELECT IFNULL(SUM(pv.`counter`), 0)
+					FROM `'._DB_PREFIX_.'page` p
+					LEFT JOIN `'._DB_PREFIX_.'page_viewed` pv ON p.`id_page` = pv.`id_page`
+					LEFT JOIN `'._DB_PREFIX_.'date_range` dr ON pv.`id_date_range` = dr.`id_date_range`
+					LEFT JOIN `'._DB_PREFIX_.'product` pr ON CAST(p.`id_object` AS UNSIGNED INTEGER) = pr.`id_product`
+					LEFT JOIN `'._DB_PREFIX_.'category_product` capr2 ON capr2.`id_product` = pr.`id_product`
+					WHERE capr.`id_category` = capr2.`id_category`
+					AND p.`id_page_type` = 1
+					AND dr.`time_start` BETWEEN '.$date_between.'
+					AND dr.`time_end` BETWEEN '.$date_between.'
+				) AS totalPageViewed
+			FROM `'._DB_PREFIX_.'category` ca
+			LEFT JOIN `'._DB_PREFIX_.'category_lang` calang ON (ca.`id_category` = calang.`id_category` AND calang.`id_lang` = '.(int)$id_lang.Shop::addSqlRestrictionOnLang('calang').')
+			LEFT JOIN `'._DB_PREFIX_.'category_lang` parent ON (ca.`id_parent` = parent.`id_category` AND parent.`id_lang` = '.(int)$id_lang.Shop::addSqlRestrictionOnLang('parent').')
+			LEFT JOIN `'._DB_PREFIX_.'category_product` capr ON ca.`id_category` = capr.`id_category`
 			LEFT JOIN (
-				SELECT pr.`id_product`,
+				SELECT pr.`id_product`, t.`totalQuantitySold`, t.`totalPriceSold`, t.`totalWholeSalePriceSold`
+				FROM `'._DB_PREFIX_.'product` pr
+				LEFT JOIN (
+					SELECT pr.`id_product`, pa.`wholesale_price`,
+						IFNULL(SUM(cp.`product_quantity`), 0) AS totalQuantitySold,
+						IFNULL(SUM(cp.`product_price` * cp.`product_quantity`), 0) / o.conversion_rate AS totalPriceSold,
+						IFNULL(SUM(
+							CASE
+								WHEN cp.`original_wholesale_price` <> "0.000000"
+								THEN cp.`original_wholesale_price` * cp.`product_quantity`
+								WHEN pa.`wholesale_price` <> "0.000000"
+								THEN pa.`wholesale_price` * cp.`product_quantity`
+								WHEN pr.`wholesale_price` <> "0.000000"
+								THEN pr.`wholesale_price` * cp.`product_quantity`
+							END
+						), 0) / o.conversion_rate AS totalWholeSalePriceSold
+					FROM `'._DB_PREFIX_.'product` pr
+					LEFT OUTER JOIN `'._DB_PREFIX_.'order_detail` cp ON pr.`id_product` = cp.`product_id`
+					LEFT JOIN `'._DB_PREFIX_.'orders` o ON o.`id_order` = cp.`id_order`
+					LEFT JOIN `'._DB_PREFIX_.'product_attribute` pa ON pa.`id_product_attribute` = cp.`product_attribute_id`
+					'.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o').'
+					WHERE o.valid = 1
+					AND o.invoice_date BETWEEN '.$date_between.'
+					GROUP BY pr.`id_product`
+				) t ON t.`id_product` = pr.`id_product`
+			) t	ON t.`id_product` = capr.`id_product`
+			'.(($categories) ? 'WHERE ca.id_category IN ('.implode(', ', $categories).')' : '').'
+			GROUP BY ca.`id_category`
+			HAVING ca.`id_category` != 1';
+		}else{
+			$this->query = '
+			SELECT SQL_CALC_FOUND_ROWS ca.`id_category`, CONCAT(parent.name, \' > \', calang.`name`) as name,
+				IFNULL(SUM(t.`totalQuantitySold`), 0) AS totalQuantitySold,
+				ROUND(IFNULL(SUM(t.`totalPriceSold`), 0), 2) AS totalPriceSold,
+				(
+					SELECT IFNULL(SUM(pv.`counter`), 0)
+					FROM `' . _DB_PREFIX_ . 'page` p
+					LEFT JOIN `' . _DB_PREFIX_ . 'page_viewed` pv ON p.`id_page` = pv.`id_page`
+					LEFT JOIN `' . _DB_PREFIX_ . 'date_range` dr ON pv.`id_date_range` = dr.`id_date_range`
+					LEFT JOIN `' . _DB_PREFIX_ . 'product` pr ON CAST(p.`id_object` AS UNSIGNED INTEGER) = pr.`id_product`
+					LEFT JOIN `' . _DB_PREFIX_ . 'category_product` capr2 ON capr2.`id_product` = pr.`id_product`
+					WHERE capr.`id_category` = capr2.`id_category`
+					AND p.`id_page_type` = 1
+					AND dr.`time_start` BETWEEN ' . $date_between . '
+					AND dr.`time_end` BETWEEN ' . $date_between . '
+				) AS totalPageViewed
+			FROM `' . _DB_PREFIX_ . 'category` ca
+			LEFT JOIN `' . _DB_PREFIX_ . 'category_lang` calang ON (ca.`id_category` = calang.`id_category` AND calang.`id_lang` = ' . (int)$id_lang . Shop::addSqlRestrictionOnLang('calang') . ')
+			LEFT JOIN `' . _DB_PREFIX_ . 'category_lang` parent ON (ca.`id_parent` = parent.`id_category` AND parent.`id_lang` = ' . (int)$id_lang . Shop::addSqlRestrictionOnLang('parent') . ')
+			LEFT JOIN `' . _DB_PREFIX_ . 'category_product` capr ON ca.`id_category` = capr.`id_category`
+			LEFT JOIN (
+				SELECT pr.`id_product`, t.`totalQuantitySold`, t.`totalPriceSold`
+				FROM `' . _DB_PREFIX_ . 'product` pr
+				LEFT JOIN (
+					SELECT pr.`id_product`,
 					IFNULL(SUM(cp.`product_quantity`), 0) AS totalQuantitySold,
 					IFNULL(SUM(cp.`product_price` * cp.`product_quantity`), 0) / o.conversion_rate AS totalPriceSold
-				FROM `'._DB_PREFIX_.'product` pr
-				LEFT OUTER JOIN `'._DB_PREFIX_.'order_detail` cp ON pr.`id_product` = cp.`product_id`
-				LEFT JOIN `'._DB_PREFIX_.'orders` o ON o.`id_order` = cp.`id_order`
-				'.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o').'
-				WHERE o.valid = 1
-				AND o.invoice_date BETWEEN '.$date_between.'
-				GROUP BY pr.`id_product`
-			) t ON t.`id_product` = pr.`id_product`
-		) t	ON t.`id_product` = capr.`id_product`
-		'.(($categories) ? 'WHERE ca.id_category IN ('.implode(', ', $categories).')' : '').'
-		GROUP BY ca.`id_category`
-		HAVING ca.`id_category` != 1';
+					FROM `' . _DB_PREFIX_ . 'product` pr
+					LEFT OUTER JOIN `' . _DB_PREFIX_ . 'order_detail` cp ON pr.`id_product` = cp.`product_id`
+					LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON o.`id_order` = cp.`id_order`
+					' . Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o') . '
+					WHERE o.valid = 1
+					AND o.invoice_date BETWEEN ' . $date_between . '
+					GROUP BY pr.`id_product`
+				) t ON t.`id_product` = pr.`id_product`
+			) t	ON t.`id_product` = capr.`id_product`
+			' . (($categories) ? 'WHERE ca.id_category IN (' . implode(', ', $categories) . ')' : '') . '
+			GROUP BY ca.`id_category`
+			HAVING ca.`id_category` != 1';
+		}
 
 		if (Validate::IsName($this->_sort))
 		{
@@ -205,8 +271,12 @@ class StatsBestCategories extends ModuleGrid
 			$this->query .= ' LIMIT '.(int)$this->_start.', '.(int)$this->_limit;
 
 		$values = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($this->query);
-		foreach ($values as &$value)
+		foreach ($values as &$value){
+			if (isset($value['totalWholeSalePriceSold'])) {
+				$value['totalWholeSalePriceSold'] = Tools::displayPrice($value['totalPriceSold'] - $value['totalWholeSalePriceSold'], $currency);
+			}
 			$value['totalPriceSold'] = Tools::displayPrice($value['totalPriceSold'], $currency);
+		}
 
 		$this->_values = $values;
 		$this->_totalCount = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue('SELECT FOUND_ROWS()');
