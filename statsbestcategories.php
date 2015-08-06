@@ -97,6 +97,8 @@ class StatsBestCategories extends ModuleGrid
 
 	public function hookAdminStatsModules($params)
 	{
+        $onlyChildren = (int)Tools::getValue('onlyChildren');
+        
 		$engine_params = array(
 			'id' => 'id_category',
 			'title' => $this->displayName,
@@ -104,7 +106,10 @@ class StatsBestCategories extends ModuleGrid
 			'defaultSortColumn' => $this->default_sort_column,
 			'defaultSortDirection' => $this->default_sort_direction,
 			'emptyMessage' => $this->empty_message,
-			'pagingMessage' => $this->paging_message
+			'pagingMessage' => $this->paging_message,
+            'customParams' => array(
+                'onlyChildren' => $onlyChildren,
+            )
 		);
 
 		if (Tools::getValue('export'))
@@ -115,9 +120,29 @@ class StatsBestCategories extends ModuleGrid
 				<i class="icon-sitemap"></i> '.$this->displayName.'
 			</div>
 			'.$this->engine($engine_params).'
-			<a class="btn btn-default export-csv" href="'.Tools::safeOutput($_SERVER['REQUEST_URI'].'&export=1').'">
-				<i class="icon-cloud-upload"></i> '.$this->l('CSV Export').'
-			</a>';
+            <div class="row form-horizontal">
+                <div class="col-md-3">
+                    <a class="btn btn-default export-csv" href="'.Tools::safeOutput($_SERVER['REQUEST_URI'].'&export=1').'">
+                        <i class="icon-cloud-upload"></i> '.$this->l('CSV Export').'
+                    </a>
+                </div>
+                <div class="col-md-9">
+                    <div class="checkbox">
+                        <label for="onlyChildren">
+                            <input type="checkbox" name="onlyChildren" id="onlyChildren" value="1" '.($onlyChildren == 1 ? 'checked="checked"' : '').'>
+                            '.$this->l('Display final level categories only (that have no child categories)').'
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+            <script type="text/javascript">
+                $(function(){
+                    $("#onlyChildren").change(function(){
+                        $("#calendar_form").append($(this).clone().css("display", "none")).submit();
+                    });
+                });
+            </script>';
 
 		return $this->html;
 	}
@@ -165,6 +190,11 @@ class StatsBestCategories extends ModuleGrid
 			}
 		}
 
+        $onlyChildren = '';
+        if ((int)Tools::getValue('onlyChildren') == 1) {
+            $onlyChildren = 'AND NOT EXISTS (SELECT NULL FROM '._DB_PREFIX_.'category WHERE id_parent = ca.id_category)';
+        }
+
 		// Get best categories
 		if (version_compare(_PS_VERSION_, '1.6.1.1', '>=')) {
 			$this->query = '
@@ -183,7 +213,10 @@ class StatsBestCategories extends ModuleGrid
 					AND p.`id_page_type` = 1
 					AND dr.`time_start` BETWEEN '.$date_between.'
 					AND dr.`time_end` BETWEEN '.$date_between.'
-				) AS totalPageViewed
+				) AS totalPageViewed,
+				(
+                    SELECT COUNT(id_category) FROM '._DB_PREFIX_.'category WHERE `id_parent` = ca.`id_category`
+			    ) AS hasChildren
 			FROM `'._DB_PREFIX_.'category` ca
 			LEFT JOIN `'._DB_PREFIX_.'category_lang` calang ON (ca.`id_category` = calang.`id_category` AND calang.`id_lang` = '.(int)$id_lang.Shop::addSqlRestrictionOnLang('calang').')
 			LEFT JOIN `'._DB_PREFIX_.'category_lang` parent ON (ca.`id_parent` = parent.`id_category` AND parent.`id_lang` = '.(int)$id_lang.Shop::addSqlRestrictionOnLang('parent').')
@@ -216,6 +249,7 @@ class StatsBestCategories extends ModuleGrid
 				) t ON t.`id_product` = pr.`id_product`
 			) t	ON t.`id_product` = capr.`id_product`
 			'.(($categories) ? 'WHERE ca.id_category IN ('.implode(', ', $categories).')' : '').'
+			'.$onlyChildren.'
 			GROUP BY ca.`id_category`
 			HAVING ca.`id_category` != 1';
 		}else{
@@ -234,7 +268,10 @@ class StatsBestCategories extends ModuleGrid
 					AND p.`id_page_type` = 1
 					AND dr.`time_start` BETWEEN ' . $date_between . '
 					AND dr.`time_end` BETWEEN ' . $date_between . '
-				) AS totalPageViewed
+				) AS totalPageViewed,
+				(
+                    SELECT COUNT(id_category) FROM '._DB_PREFIX_.'category WHERE `id_parent` = ca.`id_category`
+			    ) AS hasChildren
 			FROM `' . _DB_PREFIX_ . 'category` ca
 			LEFT JOIN `' . _DB_PREFIX_ . 'category_lang` calang ON (ca.`id_category` = calang.`id_category` AND calang.`id_lang` = ' . (int)$id_lang . Shop::addSqlRestrictionOnLang('calang') . ')
 			LEFT JOIN `' . _DB_PREFIX_ . 'category_lang` parent ON (ca.`id_parent` = parent.`id_category` AND parent.`id_lang` = ' . (int)$id_lang . Shop::addSqlRestrictionOnLang('parent') . ')
@@ -256,6 +293,7 @@ class StatsBestCategories extends ModuleGrid
 				) t ON t.`id_product` = pr.`id_product`
 			) t	ON t.`id_product` = capr.`id_product`
 			' . (($categories) ? 'WHERE ca.id_category IN (' . implode(', ', $categories) . ')' : '') . '
+			'.$onlyChildren.'
 			GROUP BY ca.`id_category`
 			HAVING ca.`id_category` != 1';
 		}
@@ -272,6 +310,18 @@ class StatsBestCategories extends ModuleGrid
 
 		$values = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($this->query);
 		foreach ($values as &$value){
+
+            if ((int)Tools::getIsset('export') == false) {
+                $parts = explode('>', $value['name']);
+                $value['name'] = '<i class="icon-folder-open"></i> '.trim($parts[0]).' > ';
+                if ((int)$value['hasChildren'] == 0) {
+                    $value['name'] .= '&bull; ';
+                } else {
+                    $value['name'] .= '<i class="icon-folder-open"></i> ';
+                }
+                $value['name'] .= trim($parts[1]);
+            }
+
 			if (isset($value['totalWholeSalePriceSold'])) {
 				$value['totalWholeSalePriceSold'] = Tools::displayPrice($value['totalPriceSold'] - $value['totalWholeSalePriceSold'], $currency);
 			}
