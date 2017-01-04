@@ -42,7 +42,7 @@ class statsbestcategories extends ModuleGrid
     {
         $this->name = 'statsbestcategories';
         $this->tab = 'analytics_stats';
-        $this->version = '1.5.0';
+        $this->version = '2.0.0';
         $this->author = 'PrestaShop';
         $this->need_instance = 0;
 
@@ -50,45 +50,45 @@ class statsbestcategories extends ModuleGrid
 
         $this->default_sort_column = 'totalPriceSold';
         $this->default_sort_direction = 'DESC';
-        $this->empty_message = $this->l('Empty recordset returned');
-        $this->paging_message = sprintf($this->l('Displaying %1$s of %2$s'), '{0} - {1}', '{2}');
+        $this->empty_message = $this->trans('Empty recordset returned', array(), 'Modules.Statsbestcategories.Admin');
+        $this->paging_message = $this->trans('Displaying %1$s of %2$s', array('{0} - {1}', '{2}'), 'Admin.Global');
 
         $this->columns = array(
             array(
                 'id' => 'name',
-                'header' => $this->l('Name'),
+                'header' => $this->trans('Name', array(), 'Admin.Global'),
                 'dataIndex' => 'name',
                 'align' => 'left'
             ),
             array(
                 'id' => 'totalQuantitySold',
-                'header' => $this->l('Total Quantity Sold'),
+                'header' => $this->trans('Total Quantity Sold', array(), 'Modules.Statsbestcategories.Admin'),
                 'dataIndex' => 'totalQuantitySold',
                 'align' => 'center'
             ),
             array(
                 'id' => 'totalPriceSold',
-                'header' => $this->l('Total Price'),
+                'header' => $this->trans('Total Price', array(), 'Modules.Statsbestcategories.Admin'),
                 'dataIndex' => 'totalPriceSold',
                 'align' => 'right'
             ),
             array(
                 'id' => 'totalWholeSalePriceSold',
-                'header' => $this->l('Total Margin'),
+                'header' => $this->trans('Total Margin', array(), 'Modules.Statsbestcategories.Admin'),
                 'dataIndex' => 'totalWholeSalePriceSold',
                 'align' => 'center'
             ),
             array(
                 'id' => 'totalPageViewed',
-                'header' => $this->l('Total Viewed'),
+                'header' => $this->trans('Total Viewed', array(), 'Modules.Statsbestcategories.Admin'),
                 'dataIndex' => 'totalPageViewed',
                 'align' => 'center'
             )
         );
 
-        $this->displayName = $this->l('Best categories');
-        $this->description = $this->l('Adds a list of the best categories to the Stats dashboard.');
-        $this->ps_versions_compliancy = array('min' => '1.6', 'max' => _PS_VERSION_);
+        $this->displayName = $this->trans('Best categories', array(), 'Modules.Statsbestcategories.Admin');
+        $this->description = $this->trans('Adds a list of the best categories to the Stats dashboard.', array(), 'Modules.Statsbestcategories.Admin');
+        $this->ps_versions_compliancy = array('min' => '1.7.0.0', 'max' => _PS_VERSION_);
     }
 
     public function install()
@@ -125,14 +125,14 @@ class statsbestcategories extends ModuleGrid
             <div class="row form-horizontal">
                 <div class="col-md-3">
                     <a class="btn btn-default export-csv" href="'.Tools::safeOutput($_SERVER['REQUEST_URI'].'&export=1').'">
-                        <i class="icon-cloud-upload"></i> '.$this->l('CSV Export').'
+                        <i class="icon-cloud-upload"></i> '.$this->trans('CSV Export', array(), 'Admin.Global').'
                     </a>
                 </div>
                 <div class="col-md-9">
                     <div class="checkbox">
                         <label for="onlyChildren">
                             <input type="checkbox" name="onlyChildren" id="onlyChildren" value="1" '.($onlyChildren == 1 ? 'checked="checked"' : '').'>
-                            '.$this->l('Display final level categories only (that have no child categories)').'
+                            '.$this->trans('Display final level categories only (that have no child categories)', array(), 'Modules.Statsbestcategories.Admin').'
                         </label>
                     </div>
 
