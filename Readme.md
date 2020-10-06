@@ -2,7 +2,7 @@
 
 ## About
 
-Adds a list of the best categories to the Stats dashboard.
+Enrich the ‘Stats’ section of your back office, add a list of the best categories to the dashboard.
 
 ## Reporting issues
 
