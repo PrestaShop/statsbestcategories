@@ -2,7 +2,7 @@
 
 ## About
 
-Enrich the ‘Stats’ section of your back office, add a list of the best categories to the dashboard.
+Enrich your stats, add a list of the best selling categories to the dashboard.
 
 ## Reporting issues
 
