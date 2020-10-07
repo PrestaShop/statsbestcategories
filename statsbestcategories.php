@@ -87,7 +87,7 @@ class statsbestcategories extends ModuleGrid
         );
 
         $this->displayName = $this->trans('Best categories', array(), 'Modules.Statsbestcategories.Admin');
-        $this->description = $this->trans('Enrich the ‘Stats’ section of your back office, add a list of the best categories to the dashboard.', array(), 'Modules.Statsbestcategories.Admin');
+        $this->description = $this->trans('Enrich your stats, add a list of the best selling categories to the dashboard.', array(), 'Modules.Statsbestcategories.Admin');
         $this->ps_versions_compliancy = array('min' => '1.7.1.0', 'max' => _PS_VERSION_);
     }
 
