@@ -2,7 +2,7 @@
 
 ## About
 
-Adds a list of the best categories to the Stats dashboard.
+Enrich your stats, add a list of the best selling categories to the dashboard.
 
 ## Reporting issues
 
