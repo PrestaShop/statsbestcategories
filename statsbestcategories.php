@@ -227,7 +227,7 @@ class statsbestcategories extends ModuleGrid
 				LEFT JOIN (
 					SELECT pr.`id_product`, pa.`wholesale_price`,
 						IFNULL(SUM(cp.`product_quantity`), 0) AS totalQuantitySold,
-						IFNULL(SUM(cp.`product_price` * cp.`product_quantity`), 0) / o.conversion_rate AS totalPriceSold,
+						IFNULL(SUM(cp.`unit_price_tax_excl` * cp.`product_quantity`), 0) / o.conversion_rate AS totalPriceSold,
 						IFNULL(SUM(
 							CASE
 								WHEN cp.`original_wholesale_price` <> "0.000000"
