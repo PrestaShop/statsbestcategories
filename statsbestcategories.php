@@ -279,9 +279,9 @@ class statsbestcategories extends ModuleGrid
             }
 
             if (isset($value['totalWholeSalePriceSold'])) {
-                $value['totalWholeSalePriceSold'] = Tools::displayPrice($value['totalPriceSold'] - $value['totalWholeSalePriceSold'], $currency);
+                $value['totalWholeSalePriceSold'] = $this->context->getCurrentLocale()->formatPrice($value['totalPriceSold'] - $value['totalWholeSalePriceSold'], $currency->iso_code);
             }
-            $value['totalPriceSold'] = Tools::displayPrice($value['totalPriceSold'], $currency);
+            $value['totalPriceSold'] = $this->context->getCurrentLocale()->formatPrice($value['totalPriceSold'], $currency->iso_code);
         }
 
         $this->_values = $values;
