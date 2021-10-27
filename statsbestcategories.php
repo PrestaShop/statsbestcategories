@@ -88,7 +88,7 @@ class statsbestcategories extends ModuleGrid
 
         $this->displayName = $this->trans('Best categories', array(), 'Modules.Statsbestcategories.Admin');
         $this->description = $this->trans('Enrich your stats, add a list of the best selling categories to the dashboard.', array(), 'Modules.Statsbestcategories.Admin');
-        $this->ps_versions_compliancy = array('min' => '1.7.1.0', 'max' => _PS_VERSION_);
+        $this->ps_versions_compliancy = array('min' => '1.7.6.0', 'max' => _PS_VERSION_);
     }
 
     public function install()
@@ -279,9 +279,9 @@ class statsbestcategories extends ModuleGrid
             }
 
             if (isset($value['totalWholeSalePriceSold'])) {
-                $value['totalWholeSalePriceSold'] = Tools::displayPrice($value['totalPriceSold'] - $value['totalWholeSalePriceSold'], $currency);
+                $value['totalWholeSalePriceSold'] = $this->context->getCurrentLocale()->formatPrice($value['totalPriceSold'] - $value['totalWholeSalePriceSold'], $currency->iso_code);
             }
-            $value['totalPriceSold'] = Tools::displayPrice($value['totalPriceSold'], $currency);
+            $value['totalPriceSold'] = $this->context->getCurrentLocale()->formatPrice($value['totalPriceSold'], $currency->iso_code);
         }
 
         $this->_values = $values;
