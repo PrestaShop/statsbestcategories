@@ -42,7 +42,7 @@ class statsbestcategories extends ModuleGrid
     {
         $this->name = 'statsbestcategories';
         $this->tab = 'analytics_stats';
-        $this->version = '2.0.0';
+        $this->version = '2.0.1';
         $this->author = 'PrestaShop';
         $this->need_instance = 0;
 
@@ -93,10 +93,10 @@ class statsbestcategories extends ModuleGrid
 
     public function install()
     {
-        return (parent::install() && $this->registerHook('AdminStatsModules'));
+        return (parent::install() && $this->registerHook('displayAdminStatsModules'));
     }
 
-    public function hookAdminStatsModules($params)
+    public function hookDisplayAdminStatsModules($params)
     {
         $onlyChildren = (int)Tools::getValue('onlyChildren');
 
