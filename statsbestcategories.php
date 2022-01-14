@@ -41,7 +41,7 @@ class statsbestcategories extends ModuleGrid
     public function __construct()
     {
         $this->name = 'statsbestcategories';
-        $this->tab = 'analytics_stats';
+        $this->tab = 'administration';
         $this->version = '2.0.1';
         $this->author = 'PrestaShop';
         $this->need_instance = 0;
