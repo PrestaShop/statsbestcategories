@@ -150,12 +150,12 @@ class statsbestcategories extends ModuleGrid
 
     public function getData()
     {
-        $currency = new Currency(Configuration::get('PS_CURRENCY_DEFAULT'));
+        $currency = new Currency((int) Configuration::get('PS_CURRENCY_DEFAULT'));
         $date_between = $this->getDate();
         $id_lang = $this->getLang();
 
         //If column 'order_detail.original_wholesale_price' does not exist, create it
-        Db::getInstance(_PS_USE_SQL_SLAVE_)->query('SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'order_detail` LIKE "original_wholesale_price"');
+        Db::getInstance((bool) _PS_USE_SQL_SLAVE_)->query('SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'order_detail` LIKE "original_wholesale_price"');
         if (Db::getInstance()->NumRows() == 0) {
             Db::getInstance()->execute('ALTER TABLE `' . _DB_PREFIX_ . 'order_detail` ADD `original_wholesale_price` DECIMAL( 20, 6 ) NOT NULL DEFAULT  "0.000000"');
         }
@@ -263,7 +263,7 @@ class statsbestcategories extends ModuleGrid
             $this->query .= ' LIMIT ' . (int) $this->_start . ', ' . (int) $this->_limit;
         }
 
-        $values = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($this->query);
+        $values = Db::getInstance((bool) _PS_USE_SQL_SLAVE_)->executeS($this->query);
         foreach ($values as &$value) {
             if ((int) Tools::getIsset('export') == false) {
                 $parts = explode('>', $value['name']);
@@ -283,6 +283,6 @@ class statsbestcategories extends ModuleGrid
         }
 
         $this->_values = $values;
-        $this->_totalCount = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue('SELECT FOUND_ROWS()');
+        $this->_totalCount = (int) Db::getInstance((bool) _PS_USE_SQL_SLAVE_)->getValue('SELECT FOUND_ROWS()');
     }
 }
